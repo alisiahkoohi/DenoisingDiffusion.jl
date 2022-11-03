@@ -5,6 +5,7 @@ using Dates
 using BSON, JSON
 using Printf
 using Random
+using ProgressMeter
 
 using DenoisingDiffusion
 using DenoisingDiffusion: train!, split_validation, load_opt_state!
@@ -80,7 +81,7 @@ end
 
 println("Calculating initial loss")
 val_loss = 0.0
-for x in val_data
+@showprogress for x in val_data
     global val_loss
     val_loss += loss(diffusion, x)
 end
@@ -108,6 +109,7 @@ hyperparameters = Dict(
 open(hyperparameters_path, "w") do f
     JSON.print(f, hyperparameters)
 end
+println("saved hyperparameters to $hyperparameters_path")
 
 println("Starting training")
 start_time = time_ns()
@@ -122,6 +124,7 @@ println("\ndone training")
 open(history_path, "w") do f
     JSON.print(f, history)
 end
+println("saved history to $history_path")
 
 params_device = Flux.params(diffusion);
 let diffusion = cpu(diffusion)
@@ -129,6 +132,7 @@ let diffusion = cpu(diffusion)
     load_opt_state!(opt, params_device, Flux.params(diffusion), to_device=cpu)
     BSON.bson(output_path, Dict(:diffusion => diffusion, :opt => opt )) 
 end
+println("saved model to $output_path")
 
 ### plot results
 

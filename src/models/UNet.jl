@@ -34,12 +34,12 @@ Each downsample halves the image dimensions so it should only be used on even si
 ```
 """
 struct UNet{E, C<:ConditionalChain}
-    embed_layers::E
+    time_embedding::E
     chain::C
     num_levels::Int
 end
 
-Flux.@functor UNet (embed_layers, chain,)
+Flux.@functor UNet (time_embedding, chain,)
 
 function UNet(
     in_channels::Int, 
@@ -81,7 +81,7 @@ function UNet(
     UNet(time_embed, chain, length(channel_multipliers) + 1)
 end
 
-function _add_unet_level(in_out, time_dim::Int, level::Int; 
+function _add_unet_level(in_out::Vector{Tuple{Int, Int}}, emb_dim::Int, level::Int; 
         block_layer, block_groups::Int, num_attention_heads::Int
         )
     if level > length(in_out)
@@ -89,9 +89,9 @@ function _add_unet_level(in_out, time_dim::Int, level::Int;
         ks = (Symbol("down_$level"), :middle_1, :middle_attention, :middle_2)
         layers = (
             Conv((3, 3), in_ch => out_ch, stride=(1, 1), pad=(1, 1)),
-            block_layer(out_ch => out_ch, time_dim; groups=block_groups),
+            block_layer(out_ch => out_ch, emb_dim; groups=block_groups),
             SkipConnection(MultiheadAttention(out_ch, nhead=num_attention_heads), +),
-            block_layer(out_ch => out_ch, time_dim; groups=block_groups),
+            block_layer(out_ch => out_ch, emb_dim; groups=block_groups),
         )     
     else # recurse down a layer
         in_ch_prev, out_ch_prev = in_out[level-1]
@@ -105,13 +105,13 @@ function _add_unet_level(in_out, time_dim::Int, level::Int;
         )
         layers = (
             downsample_layer(in_ch_prev => out_ch_prev),
-            block_layer(in_ch => in_ch, time_dim; groups=block_groups),
+            block_layer(in_ch => in_ch, emb_dim; groups=block_groups),
             ConditionalSkipConnection(
-                _add_unet_level(in_out, time_dim, level+1; 
+                _add_unet_level(in_out, emb_dim, level+1; 
                     block_layer=block_layer, block_groups=block_groups, num_attention_heads=num_attention_heads), 
                 cat_on_channel_dim
             ),
-            block_layer((in_ch + out_ch) => out_ch, time_dim; groups=block_groups),
+            block_layer((in_ch + out_ch) => out_ch, emb_dim; groups=block_groups),
             upsample_layer(out_ch => in_ch),
         )   
     end
@@ -125,7 +125,7 @@ function (u::UNet)(x::AbstractArray, timesteps::AbstractVector{Int})
             "image size $(size(x)[1:2]) is not divisible by $downsize_factor which is required for concatenation during upsampling.")
         )
     end
-    emb = u.embed_layers(timesteps)
+    emb = u.time_embedding(timesteps)
     h = u.chain(x, emb)
     h
 end
@@ -134,14 +134,14 @@ end
 
 function Base.show(io::IO, u::UNet)
     print(io, "UNet(")
-    print(io, "embed_layers=", u.embed_layers)
+    print(io, "time_embedding=", u.time_embedding)
     print(io, ", chain=", u.chain)
     print(io, ")")
 end
 
 function _big_show(io::IO, u::UNet, indent::Int=0, name=nothing)
     println(io, " "^indent, isnothing(name) ? "" : "$name = ", "UNet(")
-    for layer in [:embed_layers, :chain]
+    for layer in [:time_embedding, :chain]
         _big_show(io, getproperty(u, layer), indent+2, layer)
     end
     if indent == 0  
