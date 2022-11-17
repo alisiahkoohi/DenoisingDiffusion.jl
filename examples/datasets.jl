@@ -2,7 +2,7 @@
 
 using Random
 
-function make_spiral(rng::AbstractRNG, n_samples::Int=1000)
+function make_spiral(rng::AbstractRNG, n_samples::Int = 1000)
     t_min = 1.5π
     t_max = 4.5π
 
@@ -14,10 +14,10 @@ function make_spiral(rng::AbstractRNG, n_samples::Int=1000)
     permutedims([x y], (2, 1))
 end
 
-make_spiral(n_samples::Int=1000) = make_spiral(Random.GLOBAL_RNG, n_samples)
+make_spiral(n_samples::Int = 1000) = make_spiral(Random.GLOBAL_RNG, n_samples)
 
-function make_moons(rng::AbstractRNG, n_samples::Int=1000)
-    n_moons = floor(Int, n_samples /2)
+function make_moons(rng::AbstractRNG, n_samples::Int = 1000)
+    n_moons = floor(Int, n_samples / 2)
     t_min = 0.0
     t_max = π
     t_inner = rand(rng, n_moons) * (t_max - t_min) .+ t_min
@@ -27,13 +27,13 @@ function make_moons(rng::AbstractRNG, n_samples::Int=1000)
     inner_circ_x = 1 .- cos.(t_inner)
     inner_circ_y = 1 .- sin.(t_inner) .- 0.5
 
-    data = [outer_circ_x outer_circ_y ; inner_circ_x inner_circ_y]
+    data = [outer_circ_x outer_circ_y; inner_circ_x inner_circ_y]
     permutedims(data, (2, 1))
 end
 
-make_moons(n_samples::Int=1000) = make_moons(Random.GLOBAL_RNG, n_samples)
+make_moons(n_samples::Int = 1000) = make_moons(Random.GLOBAL_RNG, n_samples)
 
-function make_s_curve(rng::AbstractRNG, n_samples::Int=1000)
+function make_s_curve(rng::AbstractRNG, n_samples::Int = 1000)
     t = 3 * π * (rand(rng, n_samples) .- 0.5)
     x = sin.(t)
     y = sign.(t) .* (cos.(t) .- 1)
@@ -41,8 +41,8 @@ function make_s_curve(rng::AbstractRNG, n_samples::Int=1000)
     permutedims([x y], (2, 1))
 end
 
-make_s_curve(n_samples::Int=1000) = make_s_curve(Random.default_rng(), n_samples)
+make_s_curve(n_samples::Int = 1000) = make_s_curve(Random.default_rng(), n_samples)
 
-function add_noise!(rng, x, scale=1.0)
+function add_noise!(rng, x, scale = 1.0)
     x += randn(rng, size(x)) * scale
 end

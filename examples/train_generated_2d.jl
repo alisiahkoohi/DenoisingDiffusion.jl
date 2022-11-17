@@ -26,11 +26,23 @@ X = normalize_neg_one_to_one(make_spiral(n_batch))
 ## model
 
 model = ConditionalChain(
-    Parallel(.+, Dense(2, d_hid), Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid), Dense(d_hid, d_hid))),
+    Parallel(
+        .+,
+        Dense(2, d_hid),
+        Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid), Dense(d_hid, d_hid)),
+    ),
     swish,
-    Parallel(.+, Dense(d_hid, d_hid), Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid), Dense(d_hid, d_hid))),
+    Parallel(
+        .+,
+        Dense(d_hid, d_hid),
+        Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid), Dense(d_hid, d_hid)),
+    ),
     swish,
-    Parallel(.+, Dense(d_hid, d_hid), Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid), Dense(d_hid, d_hid))),
+    Parallel(
+        .+,
+        Dense(d_hid, d_hid),
+        Chain(SinusoidalPositionEmbedding(num_timesteps, d_hid), Dense(d_hid, d_hid)),
+    ),
     swish,
     Dense(d_hid, 2),
 )
@@ -42,15 +54,15 @@ diffusion = GaussianDiffusion(Vector{Float32}, βs, (2,), model)
 ### train
 diffusion = diffusion |> to_device
 
-data = Flux.DataLoader(X |> to_device; batchsize=32, shuffle=true);
+data = Flux.DataLoader(X |> to_device; batchsize = 32, shuffle = true);
 X_val = normalize_neg_one_to_one(make_spiral(floor(Int, 0.1 * n_batch)))
-val_data = Flux.DataLoader(X_val |> to_device; batchsize=32, shuffle=false);
+val_data = Flux.DataLoader(X_val |> to_device; batchsize = 32, shuffle = false);
 loss_type = Flux.mse;
-loss(diffusion, x) = p_losses(diffusion, loss_type, x; to_device=to_device)
+loss(diffusion, x) = p_losses(diffusion, loss_type, x; to_device = to_device)
 opt = Adam(0.001);
 
 start_time = time_ns()
-history = train!(loss, diffusion, data, opt, val_data; num_epochs=num_epochs)
+history = train!(loss, diffusion, data, opt, val_data; num_epochs = num_epochs)
 end_time = time_ns() - start_time
 println("\ndone training")
 @printf "time taken: %.2fs\n" end_time / 1e9
@@ -63,7 +75,7 @@ history_path = joinpath(directory, "history.json")
 hyperparameters_path = joinpath(directory, "hyperparameters.json")
 
 diffusion = diffusion |> cpu
-BSON.bson(output_path, Dict(:diffusion=>diffusion))
+BSON.bson(output_path, Dict(:diffusion => diffusion))
 
 open(history_path, "w") do f
     JSON.print(f, history)
@@ -85,13 +97,21 @@ end
 ### plot results
 diffusion = diffusion |> cpu
 
-p = plot(1:length(history["train_loss"]), history["train_loss"], label="train_loss")
-plot!(p, 1:length(history["val_loss"]), history["val_loss"], label="val_loss")
+p = plot(1:length(history["train_loss"]), history["train_loss"], label = "train_loss")
+plot!(p, 1:length(history["val_loss"]), history["val_loss"], label = "val_loss")
 display(p)
+println("press enter to continue")
+readline()
+
 X0 = p_sample_loop(diffusion, 1000)
-p = scatter(X0[1, :], X0[2, :], alpha=0.5, label="",
-    aspectratio=:equal,
-    xlims=(-2, 2), ylims=(-2, 2),
+p = scatter(
+    X0[1, :],
+    X0[2, :],
+    alpha = 0.5,
+    label = "",
+    aspectratio = :equal,
+    xlims = (-2, 2),
+    ylims = (-2, 2),
 )
 display(p)
 

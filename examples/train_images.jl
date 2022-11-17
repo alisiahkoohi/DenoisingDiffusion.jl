@@ -27,19 +27,19 @@ to_device = gpu # cpu or gpu
 ### data
 
 if dataset == :MNIST
-    trainset = MNIST(Float32, :train, dir=data_directory)
+    trainset = MNIST(Float32, :train, dir = data_directory)
     norm_data = normalize_neg_one_to_one(reshape(trainset.features, 28, 28, 1, :))
     train_x, val_x = split_validation(MersenneTwister(seed), norm_data)
 elseif dataset == :Pokemon
     data_path = joinpath(data_directory, "imgs_WHCN_48x48.bson")
-    data = BSON.load(data_path)[:imgs_WHCN]; 
-    norm_data = normalize_neg_one_to_one(data);
-    train_x, val_test_x = split_validation(MersenneTwister(seed), norm_data);
-    n_val = floor(Int, size(val_test_x, 4)/2)
+    data = BSON.load(data_path)[:imgs_WHCN]
+    norm_data = normalize_neg_one_to_one(data)
+    train_x, val_test_x = split_validation(MersenneTwister(seed), norm_data)
+    n_val = floor(Int, size(val_test_x, 4) / 2)
     n_train = size(train_x, 4)
     val_x = val_test_x[:, :, :, 1:n_val]
-    test_x = val_test_x[:, :, :, (n_val + 1):end]
-else 
+    test_x = val_test_x[:, :, :, (n_val+1):end]
+else
     throw("$dataset not supported")
 end
 
@@ -50,10 +50,15 @@ println("validation data: ", size(val_x))
 ## create
 in_channels = size(train_x, 3)
 data_shape = size(train_x)[1:3]
-model = UNet(in_channels, model_channels, num_timesteps; 
-    block_layer=ResBlock, block_groups=8, channel_multipliers=(1, 2, 4), 
-    num_attention_heads=4, 
-    )
+model = UNet(
+    in_channels,
+    model_channels,
+    num_timesteps;
+    block_layer = ResBlock,
+    block_groups = 8,
+    channel_multipliers = (1, 2, 4),
+    num_attention_heads = 4,
+)
 βs = cosine_beta_schedule(num_timesteps, 0.008)
 diffusion = GaussianDiffusion(Vector{Float32}, βs, data_shape, model)
 ## load
@@ -66,16 +71,16 @@ println("")
 ### train
 diffusion = diffusion |> to_device
 
-data = Flux.DataLoader(train_x |> to_device; batchsize=32, shuffle=true);
-val_data = Flux.DataLoader(val_x |> to_device; batchsize=32, shuffle=false);
-loss(diffusion, x) = p_losses(diffusion, loss_type, x; to_device=to_device)
+data = Flux.DataLoader(train_x |> to_device; batchsize = 32, shuffle = true);
+val_data = Flux.DataLoader(val_x |> to_device; batchsize = 32, shuffle = false);
+loss(diffusion, x) = p_losses(diffusion, loss_type, x; to_device = to_device)
 if isdefined(Main, :opt)
     println("loading optimiser state")
-    load_opt_state!(opt, params_start, Flux.params(diffusion), to_device=to_device)
+    load_opt_state!(opt, params_start, Flux.params(diffusion), to_device = to_device)
     println("  length(opt.state) = ", length(opt.state))
 else
     println("defining new optimiser")
-    opt = Adam(learning_rate);
+    opt = Adam(learning_rate)
     println("  ", opt)
 end
 
@@ -113,8 +118,16 @@ println("saved hyperparameters to $hyperparameters_path")
 
 println("Starting training")
 start_time = time_ns()
-history = train!(loss, diffusion, data, opt, val_data; 
-    num_epochs=num_epochs, save_after_epoch=true, save_dir=output_directory)
+history = train!(
+    loss,
+    diffusion,
+    data,
+    opt,
+    val_data;
+    num_epochs = num_epochs,
+    save_after_epoch = true,
+    save_dir = output_directory,
+)
 end_time = time_ns() - start_time
 println("\ndone training")
 @printf "time taken: %.2fs\n" end_time / 1e9
@@ -129,29 +142,29 @@ println("saved history to $history_path")
 params_device = Flux.params(diffusion);
 let diffusion = cpu(diffusion)
     # save opt in case want to resume training
-    load_opt_state!(opt, params_device, Flux.params(diffusion), to_device=cpu)
-    BSON.bson(output_path, Dict(:diffusion => diffusion, :opt => opt )) 
+    load_opt_state!(opt, params_device, Flux.params(diffusion), to_device = cpu)
+    BSON.bson(output_path, Dict(:diffusion => diffusion, :opt => opt))
 end
 println("saved model to $output_path")
 
 ### plot results
 
-p = plot(1:length(history["val_loss"]), history["val_loss"], label="val loss")
+p = plot(1:length(history["val_loss"]), history["val_loss"], label = "val loss")
 display(p)
 
-X0 = p_sample_loop(diffusion, 12; to_device=to_device)
+X0 = p_sample_loop(diffusion, 12; to_device = to_device)
 X0 = X0 |> cpu
 
 if dataset == :MNIST
     imgs = convert2image(trainset, X0[:, :, 1, :])
 elseif dataset == :Pokemon
-    for i in 1:12
+    for i = 1:12
         X0[:, :, :, i] = normalize_zero_to_one(X0[:, :, :, i])
     end
     imgs = img_WHC_to_rgb(X0)
 end
 
-p = plot([plot(imgs[:, :, i]) for i in 1:12]...)
+p = plot([plot(imgs[:, :, i]) for i = 1:12]...)
 display(p)
 
 println("press enter to finish")

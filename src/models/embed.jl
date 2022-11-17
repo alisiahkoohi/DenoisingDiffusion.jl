@@ -1,3 +1,5 @@
+export SinusoidalPositionEmbedding
+
 """
     SinusoidalPositionEmbedding(dim_embedding::Int, max_length::Int=1000)
 
@@ -21,13 +23,17 @@ function SinusoidalPositionEmbedding(in::Int, out::Int)
     SinusoidalPositionEmbedding(W)
 end
 
-function make_positional_embedding(dim_embedding::Int, seq_length::Int=1000; n::Int=10000)
+function make_positional_embedding(
+    dim_embedding::Int,
+    seq_length::Int = 1000;
+    n::Int = 10000,
+)
     embedding = Matrix{Float32}(undef, dim_embedding, seq_length)
-    for pos in 1:seq_length
-        for row in 0:2:(dim_embedding-1)
-            denom = 1.0 / (n^(row / (dim_embedding-2)))
-            embedding[row + 1, pos] = sin(pos * denom)
-            embedding[row + 2, pos] = cos(pos * denom)
+    for pos = 1:seq_length
+        for row = 0:2:(dim_embedding-1)
+            denom = 1.0 / (n^(row / (dim_embedding - 2)))
+            embedding[row+1, pos] = sin(pos * denom)
+            embedding[row+2, pos] = cos(pos * denom)
         end
     end
     embedding
@@ -38,5 +44,12 @@ end
 (m::SinusoidalPositionEmbedding)(x::AbstractArray) = reshape(m(vec(x)), :, size(x)...)
 
 function Base.show(io::IO, m::SinusoidalPositionEmbedding)
-    print(io, "SinusoidalPositionEmbedding(", size(m.weight, 2), " => ", size(m.weight, 1), ")")
+    print(
+        io,
+        "SinusoidalPositionEmbedding(",
+        size(m.weight, 2),
+        " => ",
+        size(m.weight, 1),
+        ")",
+    )
 end

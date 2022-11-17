@@ -1,13 +1,15 @@
 
-using Flux: update!, DataLoader
-using Flux.Optimise: AbstractOptimiser
-using Flux.Zygote: sensitivity, pullback
-using Printf: @sprintf
 
-function train!(loss, diffusion::GaussianDiffusion, data, opt::AbstractOptimiser, val_data;
-    num_epochs::Int=10,
-    save_after_epoch::Bool=false,
-    save_dir::String=""
+
+function train!(
+    loss,
+    diffusion::GaussianDiffusion,
+    data,
+    opt::AbstractOptimiser,
+    val_data;
+    num_epochs::Int = 10,
+    save_after_epoch::Bool = false,
+    save_dir::String = "",
 )
     history = Dict(
         "epoch_size" => count_observations(data),
@@ -16,7 +18,7 @@ function train!(loss, diffusion::GaussianDiffusion, data, opt::AbstractOptimiser
     )
     for epoch = 1:num_epochs
         losses = Vector{Float64}()
-        progress = Progress(length(data); desc="epoch $epoch/$num_epochs")
+        progress = Progress(length(data); desc = "epoch $epoch/$num_epochs")
         params = Flux.params(diffusion) # keep here in case of data movement between devices (this might happen during saving)
         for x in data
             batch_loss, back = pullback(params) do
@@ -25,7 +27,10 @@ function train!(loss, diffusion::GaussianDiffusion, data, opt::AbstractOptimiser
             grads = back(sensitivity(batch_loss))
             Flux.update!(opt, params, grads)
             push!(losses, batch_loss)
-            ProgressMeter.next!(progress; showvalues=[("batch loss", @sprintf("%.5f", batch_loss))])
+            ProgressMeter.next!(
+                progress;
+                showvalues = [("batch loss", @sprintf("%.5f", batch_loss))],
+            )
         end
         if save_after_epoch
             path = joinpath(save_dir, "diffusion_epoch=$(epoch).bson")
@@ -57,14 +62,19 @@ function update_history!(diffusion, history, loss, train_losses, val_data)
     println("")
 end
 
-function split_validation(rng::AbstractRNG, data::AbstractArray; frac=0.1)
+function split_validation(rng::AbstractRNG, data::AbstractArray; frac = 0.1)
     nsamples = size(data)[end]
     idxs = randperm(rng, nsamples)
     ntrain = nsamples - floor(Int, frac * nsamples)
     data[:, :, :, idxs[1:ntrain]], data[:, :, :, idxs[(ntrain+1):end]]
 end
 
-function split_validation(rng::AbstractRNG, data::AbstractArray, labels::AbstractVector{Int}; frac=0.1)
+function split_validation(
+    rng::AbstractRNG,
+    data::AbstractArray,
+    labels::AbstractVector{Int};
+    frac = 0.1,
+)
     nsamples = size(data)[end]
     idxs = randperm(rng, nsamples)
     ntrain = nsamples - floor(Int, frac * nsamples)
@@ -81,12 +91,12 @@ If `f` takes the mean this will recover the full sample mean.
 Reduces memory load for `f` and `g`. 
 To automatically batch data, use `Flux.DataLoader`.
 """
-function batched_metric(f, data::DataLoader, g=identity)
+function batched_metric(f, data::DataLoader, g = identity)
     result = 0.0
     num_observations = 0
     for (x, y) in data
-        metric = f(g(x), y) 
-        batch_size = count_observations(x) 
+        metric = f(g(x), y)
+        batch_size = count_observations(x)
         result += metric * batch_size
         num_observations += batch_size
     end
@@ -114,11 +124,11 @@ Sequence to load:
 
 See https://discourse.julialang.org/t/deepcopy-flux-model/72930
 """
-function load_opt_state!(opt::Adam, params_src, params_dest; to_device=cpu)
+function load_opt_state!(opt::Adam, params_src, params_dest; to_device = cpu)
     state = IdDict()
     for (p_dest, p_src) in zip(params_dest, params_src)
         mt, vt, βp = opt.state[p_src]
-        state[p_dest] = (to_device(mt), to_device(vt), βp,)
+        state[p_dest] = (to_device(mt), to_device(vt), βp)
     end
     opt.state = state
 end
