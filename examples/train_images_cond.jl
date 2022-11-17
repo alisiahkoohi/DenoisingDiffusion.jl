@@ -30,9 +30,9 @@ num_classes = 10
 
 ### data
 
-trainset = MNIST(Float32, :train, dir = data_directory);
-norm_data = normalize_neg_one_to_one(reshape(trainset.features, 28, 28, 1, :));
-labels = 2 .+ trainset.targets; # 1->default, 2->0, 3->1, ..
+trainset = MNIST.traindata(Float32, dir = data_directory);
+norm_data = normalize_neg_one_to_one(reshape(trainset[1], 28, 28, 1, :));
+labels = 2 .+ trainset[2]; # 1->default, 2->0, 3->1, ..
 train_x, val_x = split_validation(MersenneTwister(seed), norm_data, labels);
 
 println("train data:      ", size(train_x[1]), "--", size(train_x[2]))

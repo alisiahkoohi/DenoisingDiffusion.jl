@@ -22,13 +22,13 @@ model_channels = 16
 learning_rate = 0.001
 num_epochs = 10
 loss_type = Flux.mse;
-to_device = gpu # cpu or gpu
+to_device = cpu # cpu or gpu
 
 ### data
 
 if dataset == :MNIST
-    trainset = MNIST(Float32, :train, dir = data_directory)
-    norm_data = normalize_neg_one_to_one(reshape(trainset.features, 28, 28, 1, :))
+    trainset = MNIST.traindata(Float32, dir = data_directory);
+    norm_data = normalize_neg_one_to_one(reshape(trainset[1], 28, 28, 1, :));
     train_x, val_x = split_validation(MersenneTwister(seed), norm_data)
 elseif dataset == :Pokemon
     data_path = joinpath(data_directory, "imgs_WHCN_48x48.bson")
